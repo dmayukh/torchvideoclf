@@ -9,7 +9,7 @@ The downloader downloads videos from youtube as a collection of images and also 
 
 The train.py uses the image collections to prepare the training dataset.
 
-You code in this repo was developed on this docker image *mayukhd/torch1.7:videoclassification*
+The code in this repo was developed on this docker image *mayukhd/torch1.7:videoclassification*
 
 `docker pull mayukhd/torch1.7:videoclassification`
 
@@ -22,7 +22,7 @@ You should run the below in the above container
     
     > `{'url':"\<url of the video>", 'category':'\<category>', 'start': \<start seconds>, 'end': \<end seconds>}`
      
-     e.g., the list file should look like
+     e.g., the list file should look like, start and end are time in seconds, category is the label which should be known
      
     > `[{'url':"\<url>", 'category': "\<cat>", 'start': 506, 'end': 508},
         {'url':"\<url>", 'category': "\<cat>", 'start': 123, 'end': 127}]`
@@ -30,12 +30,10 @@ You should run the below in the above container
 - Download the images from YouTube using the downloader utility
   - Run this in the container 
   
-  `python3 download.py --train_video_list=<full path to the training list> 
-  --dataset_traindir=<full path to where the image sequences for training should be saved> 
-  --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences for validation should be saved>`
+  `python3 download.py --train_video_list=<full path to the training list> --dataset_traindir=<full path to where the image sequences for training should be saved> --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences for validation should be saved>`
 
 - Run the train.py to train the model on the images we downloaded
-  - The code used GPU by default, you can change it via the --device parameter when running
+  - The code uses GPU by default, you can change it via the `--device` parameter when running
     
     `python3 train.py --train-dir=dataset/train --val-dir=dataset/val --output-dir=checkpoint --pretrained`
     
