@@ -89,6 +89,7 @@ def evaluate(model, epoch, criterion, data_loader, device, writer):
                                   running_accuracy / 10,
                                   epoch * len(data_loader) + cntr)
                 running_accuracy = 0.0
+            cntr += 1
             metric_logger.update(loss=loss.item())
             metric_logger.meters['acc1'].update(acc1.item(), n=batch_size)
             metric_logger.meters['acc5'].update(acc5.item(), n=batch_size)
