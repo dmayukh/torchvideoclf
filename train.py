@@ -84,6 +84,7 @@ def evaluate(model, epoch, criterion, data_loader, device, writer):
             # FIXME need to take into account that the datasets
             # could have been padded in distributed setup
             batch_size = video.shape[0]
+            running_accuracy += acc1.item()
             if cntr % 10 == 9:  # average loss over the accumulated mini-batch
                 writer.add_scalar('validation accuracy',
                                   running_accuracy / 10,
