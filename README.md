@@ -44,5 +44,7 @@ You should run the below in the above container
     run `tensorboard --logdir=runs` in another session 
     
     goto https://<url>:6006 to view the training metrics
+    
+    ![image](https://user-images.githubusercontent.com/17194414/113135283-92e4df80-923f-11eb-81cd-b0074b34cb3c.png)
 
 - Run a test
