@@ -72,7 +72,7 @@ def evaluate(model, epoch, criterion, data_loader, device, writer):
     metric_logger = MetricLogger(delimiter="  ")
     header = 'Test:'
     cntr = 0
-    runnin_accuracy = 0.0
+    running_accuracy = 0.0
     with torch.no_grad():
         for video, target in metric_logger.log_every(data_loader, 100, header):
             video = video.to(device, non_blocking=True)
