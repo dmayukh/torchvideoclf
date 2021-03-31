@@ -4,8 +4,8 @@
 
 The code in this repo is largely a reuse of the pytorch vision video classification code from here https://github.com/pytorch/vision.git
 
-The `vision/references/video_classification/train.py` in the pytorch repo uses PyAV to process the videos
-This repo does not use PyAV but instead use a sequence of image files to create the training dataset. The downloader downloads videos from youtube as a collection of images and also prepares an annotation file.
+While `vision/references/video_classification/train.py` in the pytorch repo uses PyAV to process the videos, here we do not use PyAV, we instead use a sequence of image files to create the training dataset.
+The downloader downloads videos from youtube as a collection of images and also prepares an annotation file.
 
 The train.py uses the image collections to prepare the training dataset.
 
@@ -43,7 +43,7 @@ You should run the below in the above container
     
     run `tensorboard --logdir=runs` in another session 
     
-    goto https://<url>:6006 to view the training metrics
+    goto https://\<url>:6006 to view the training metrics
     
     ![image](https://user-images.githubusercontent.com/17194414/113135283-92e4df80-923f-11eb-81cd-b0074b34cb3c.png)
 
