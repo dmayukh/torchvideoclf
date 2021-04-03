@@ -157,6 +157,7 @@ class VideoDatasetCustom(Dataset):
             # if len(data) == 5:  # we have all information
             #     annot = {'path': dataset_path + "/" + data[0], 'frame_start': data[1], 'frame_end': data[2],
             #              'class': data[3], 'fps': data[4]}
+            rec['path'] = dataset_path + "/" + rec['path']
             annotations.append(rec)
         return annotations
 
@@ -177,7 +178,7 @@ class VideoDatasetCustom(Dataset):
         """ get a video """
         frame, video_idx = self.clips.get_frame(index)
         video = self.annotations[video_idx]
-        label = int(video['class'])
+        label = int(video['cls'])
         if self.transform:
             frame = self.transform(frame)
         return frame, label

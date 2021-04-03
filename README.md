@@ -30,7 +30,10 @@ You should run the below in the above container
 - Download the images from YouTube using the downloader utility
   - Run this in the container 
   
-  `python3 download.py --train_video_list=<full path to the training list> --dataset_traindir=<full path to where the image sequences for training should be saved> --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences for validation should be saved>`
+  `python3 download.py --train_video_list=<full path to the training list> 
+  --dataset_traindir=<full path to where the image sequences for training should be saved> 
+  --val_video_list=<full path to the test list> 
+  --dataset_valdir=<full path to where the image sequences for validation should be saved>`
 
 - Run the train.py to train the model on the images we downloaded
   - The code uses GPU by default, you can change it via the `--device` parameter when running

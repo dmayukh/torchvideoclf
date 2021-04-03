@@ -64,15 +64,15 @@ def main(args):
 def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description='Video downloader from youtube')
-    parser.add_argument('--train_video_list', default='data/videos_train_list.txt', help='name of train dir')
-    parser.add_argument('--val_video_list', default='data/videos_val_list.txt', help='name of val dir')
-    parser.add_argument('--test_video_list', default='data/videos_test_list.txt', help='name of val dir')
-    parser.add_argument('--video_traindir', default='', help='name of val dir')
-    parser.add_argument('--video_valdir', default='', help='name of val dir')
-    parser.add_argument('--video_testdir', default='', help='name of val dir')
-    parser.add_argument('--dataset_traindir', default='dataset/train', help='path where to save')
-    parser.add_argument('--dataset_valdir', default='dataset/val', help='path where to save')
-    parser.add_argument('--dataset_testdir', default='dataset/test', help='path where to save')
+    parser.add_argument('--train_video_list', help='name of train dir')
+    parser.add_argument('--val_video_list', help='name of val dir')
+    parser.add_argument('--test_video_list', help='name of val dir')
+    parser.add_argument('--video_traindir', help='name of val dir')
+    parser.add_argument('--video_valdir', help='name of val dir')
+    parser.add_argument('--video_testdir', help='name of val dir')
+    parser.add_argument('--dataset_traindir', help='path where to save')
+    parser.add_argument('--dataset_valdir', help='path where to save')
+    parser.add_argument('--dataset_testdir', help='path where to save')
     parser.add_argument('--clip_len', default='5', help='default video clip seconds')
     parser.add_argument(
         "--save-video-clips",
