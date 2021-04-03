@@ -59,4 +59,7 @@ You should run the below in the above container
     Fetch the checkpoints from the system where you ran your training, e.g., if you ran your training in the cloud
     you would need to download the checkpoint named 'checkpoint.pth' file which will be in the location specified in --output-dir
     
+    Download only the test images 
+    `python3 download.py --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences>`
+  
     `python3 test.py --test-dir=\<test image seq. dir> --resume-dir=\<full path to checkpoint file>`
