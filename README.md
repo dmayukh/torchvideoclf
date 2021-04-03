@@ -49,3 +49,14 @@ You should run the below in the above container
     ![image](https://user-images.githubusercontent.com/17194414/113135283-92e4df80-923f-11eb-81cd-b0074b34cb3c.png)
 
 - Run a test
+    
+    We will run our inference on a NVIDIA jetson xavier NX with Jetpack 4.1
+    
+    Download the docker image that will be used to run the inference on the jetson
+    
+    `docker pull mayukhd/jetson_4_1:cp36torch1.7`
+    
+    Fetch the checkpoints from the system where you ran your training, e.g., if you ran your training in the cloud
+    you would need to download the checkpoint named 'checkpoint.pth' file which will be in the location specified in --output-dir
+    
+    `python3 test.py --test-dir=\<test image seq. dir> --resume-dir=\<full path to checkpoint file>`

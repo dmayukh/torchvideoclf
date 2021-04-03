@@ -9,7 +9,6 @@ import torch.utils.data
 from torch.utils.data.dataloader import default_collate
 import torchvision
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
 
 
 
