@@ -6,7 +6,19 @@ import os
 import traceback
 import sys
 import ast
+import json
 
+
+class annots():
+    def __init__(self, path, start, end, cls, fps):
+        self.path = path
+        self.start = start
+        self.end = end
+        self.cls = cls
+        self.fps = fps
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+            sort_keys=True, indent=4)
 """
     Downloads videos from youtube and generates images for training
     This routine will download the videos from youtube, rescale them as per the new width provided
@@ -27,6 +39,7 @@ def YoutubeVideoToImages(video_list_path, clip_len=None, save_images=True, save_
                       The naming of the images should be strictly monotonically increasing integer starting from 0 to the frame_count.
     """
     annotationsfile = "annotations.txt"
+    annotations = []
     clsses = {}
     free_ids = 0
     defaultcliplen = 30  # seconds
@@ -48,6 +61,7 @@ def YoutubeVideoToImages(video_list_path, clip_len=None, save_images=True, save_
     with open(video_list_path, "r") as f:
         video_list = f.read()
     res = ast.literal_eval(video_list)
+    print("Fetching {} videos from list {} ".format(len(res), video_list_path))
     for vl in res:
         try:
             # get the metadata for the video
@@ -102,9 +116,12 @@ def YoutubeVideoToImages(video_list_path, clip_len=None, save_images=True, save_
                     im.save(fullpath)
                 frame_cnt = video.shape[0]
                 print("Saved {} images in {}".format(frame_cnt, pathtoimages))
-                # write the image paths to the annotations file, path, start frame, end frame, class id
-                with open(annotationsfilepath, 'a') as filetowrite:
-                    filetowrite.write("{}/{} {} {} {} {}\n".format(category, vid_idx, 0, frame_cnt, class_id, fps))
+                path = "{}/{}".format(category, vid_idx)
+                an = annots(path=path, start=0, end=frame_cnt, cls=class_id, fps=fps)
+                annotations.append(an)
+                # write the image paths to the annotations file, path, start frame, end frame, class id, fps
+                # with open(annotationsfilepath, 'a') as filetowrite:
+                #     filetowrite.write("{}/{} {} {} {} {}\n".format(category, vid_idx, 0, frame_cnt, class_id, fps))
 
             vid_idx += 1
         except Exception as e:
@@ -112,3 +129,14 @@ def YoutubeVideoToImages(video_list_path, clip_len=None, save_images=True, save_
             traceback.print_exception(*sys.exc_info())
             print("Error in processing the video at {}".format(vl['url']))
             continue
+
+    with open(annotationsfilepath, 'a') as f:
+        f.write('[')
+        cntr = 0
+        num_ele = len(annotations)
+        for an in annotations:
+            f.write(an.toJSON())
+            if cntr < num_ele - 1:
+                f.write(',')
+            cntr += 1
+        f.write(']')

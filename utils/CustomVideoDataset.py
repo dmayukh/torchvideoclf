@@ -6,6 +6,7 @@ from utils.ImagesAsFrames import *
 from torch.utils.data import Dataset
 from torch.utils.data import Sampler
 from typing import Optional, List, Iterator, Sized, Union, cast
+import json
 
 class ConvertBHWCtoBCHW(nn.Module):
     """Convert tensor from (B, H, W, C) to (B, C, H, W)
@@ -146,14 +147,17 @@ class VideoDatasetCustom(Dataset):
     def loadannotations(self, dataset_path, annotations_file):
         annotations = []
         file = dataset_path + "/" + annotations_file
+        print("Opening annotations file {}".format(file))
         with open(file, "r") as f:
-            lines = f.readlines()
-        for l in lines:
-            data = l.strip().split(' ')
-            if len(data) == 5:  # we have all information
-                annot = {'path': dataset_path + "/" + data[0], 'frame_start': data[1], 'frame_end': data[2],
-                         'class': data[3], 'fps': data[4]}
-                annotations.append(annot)
+            j = f.read()
+            rawjson = json.loads(j)
+        for rec in rawjson:
+            #change to json read
+            #data = l.strip().split(' ')
+            # if len(data) == 5:  # we have all information
+            #     annot = {'path': dataset_path + "/" + data[0], 'frame_start': data[1], 'frame_end': data[2],
+            #              'class': data[3], 'fps': data[4]}
+            annotations.append(rec)
         return annotations
 
     def __init__(self, dataset_path, annotations_file, transform=None):
