@@ -23,7 +23,8 @@ class ImagesAsVideoDataset(object):
             this is the frames of the video arranged in a list and fps of the original downloaded video
         """
         annot = self.annotations[idx]
-        frame_cnt = int(annot['frame_end'])
+        print(annot)
+        frame_cnt = int(annot['end'])
         fps = int(annot['fps'])
         video_frame_idxs = list(np.arange(frame_cnt))
         return video_frame_idxs, fps

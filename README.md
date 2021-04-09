@@ -30,7 +30,10 @@ You should run the below in the above container
 - Download the images from YouTube using the downloader utility
   - Run this in the container 
   
-  `python3 download.py --train_video_list=<full path to the training list> --dataset_traindir=<full path to where the image sequences for training should be saved> --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences for validation should be saved>`
+  `python3 download.py --train_video_list=<full path to the training list> 
+  --dataset_traindir=<full path to where the image sequences for training should be saved> 
+  --val_video_list=<full path to the test list> 
+  --dataset_valdir=<full path to where the image sequences for validation should be saved>`
 
 - Run the train.py to train the model on the images we downloaded
   - The code uses GPU by default, you can change it via the `--device` parameter when running
@@ -46,3 +49,17 @@ You should run the below in the above container
     ![image](https://user-images.githubusercontent.com/17194414/113135283-92e4df80-923f-11eb-81cd-b0074b34cb3c.png)
 
 - Run a test
+    
+    We will run our inference on a NVIDIA jetson xavier NX with Jetpack 4.1
+    
+    Download the docker image that will be used to run the inference on the jetson
+    
+    `docker pull mayukhd/jetson_4_1:cp36torch1.7`
+    
+    Fetch the checkpoints from the system where you ran your training, e.g., if you ran your training in the cloud
+    you would need to download the checkpoint named 'checkpoint.pth' file which will be in the location specified in --output-dir
+    
+    Download only the test images 
+    `python3 download.py --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences>`
+  
+    `python3 test.py --test-dir=\<test image seq. dir> --resume-dir=\<full path to checkpoint file>`
