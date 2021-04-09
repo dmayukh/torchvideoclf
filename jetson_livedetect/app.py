@@ -1,25 +1,63 @@
 from aiohttp import web
 import socketio
 import cv2
-import threading
-import time
 import asyncio
+from utils.VideoToImages import *
+from utils.CustomVideoDataset import *
+from utils.WarmupMultiStepLR import *
+from utils.MetricLogger import *
 
+import torch.utils.data
+from torch.utils.data.dataloader import default_collate
+import torchvision
+from torch import nn
+from collections import deque
+
+"""
+We will be using a socketIO server written in python and a javascript based socketIO client, to the versions must be compatible
+python-socketio==4.6.0
+javascript: https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js
+as per this https://python-socketio.readthedocs.io/en/latest/intro.html#what-is-socket-io
+python-socketio 4.x should be used with javascript sockeIO 1.x and 2.x
+"""
 connection_flag = 0
 
-## creates a new Async Socket IO Server
+"""
+    The dataset of the frames from the carmera used for prediction
+"""
+class FrameDataset():
+
+    def __init__(self, max_frames):
+        self.framequeue = deque()
+        self.max_frames = max_frames
+
+    def add_frame(self, frame):
+        if self.num_frames() > self.max_frames:
+            print("Popping frame, new length = {}".format(self.num_frames()))
+            self.framequeue.popleft()
+        self.framequeue.append(frame)
+
+    def num_frames(self):
+        return len(self.framequeue)
+
+    def get_frames(self):
+        return [self.framequeue.popleft() for i in range(self.num_frames())]
+
+
+all_frames = FrameDataset(max_frames=150) #at 15 fps, 10 seconds
+#code from here https://python-socketio.readthedocs.io/en/latest/intro.html#what-is-socket-io
+#and here https://tutorialedge.net/python/python-socket-io-tutorial/
 sio = socketio.AsyncServer()
-## Creates a new Aiohttp Web Application
 app = web.Application()
-# Binds our Socket.IO server to our Web App
-## instance
 sio.attach(app)
 
 cap = cv2.VideoCapture(0)
 
 def gen_frames():
+    global all_frames
     while True:
-        success, frame = cap.read()  # read the camera frame
+        success, frame = cap.read()  # read a frame from the camera
+        all_frames.add_frame(frame)
         if not success:
             break
         else:
@@ -28,6 +66,7 @@ def gen_frames():
             frame = buffer.tobytes()
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
 
 async def video_feed(request):
     response = web.StreamResponse()
@@ -38,8 +77,8 @@ async def video_feed(request):
         await asyncio.sleep(0.1)
         await response.write(frame)
     return response
-## we can define aiohttp endpoints just as we normally
-## would with no change
+
+
 async def index(request):
     with open('index.html') as f:
         return web.Response(text=f.read(), content_type='text/html')
@@ -47,56 +86,88 @@ async def index(request):
 @sio.on('connect')
 async def connect_handler(sid, environ):
     global connection_flag
-    print("new connection") # works as expected
+    print("New connection from {}".format(sid))
     connection_flag = 1
-    await sio.emit('initial_config', "connected") # works as expected
+    await sio.emit('welcome', "connected")
+
+@sio.event
+def disconnect(sid):
+    global connection_flag
+    print('disconnect ', sid)
+    connection_flag = 0
 
 async def send_message():
     global connection_flag
+    global all_frames
     try:
-        print("in send message")
+        print("Background task started...")
         await asyncio.sleep(1)
-        print("wait till a client connects")
+        print("Wait till a client connects...")
         while connection_flag == 0:
             await asyncio.sleep(1)
             pass
-        print("waiting 2 seconds..")
+        print("Waiting 2 seconds..")
         await asyncio.sleep(2)
         i = 0
         while True:
-            print("now emitting: ", i)
-            # await sendData(i)
-            await sio.emit('feedback', "From thread!")
+            print("Now emitting: {}".format(i))
+            await sio.emit('feedback', all_frames.num_frames())
             i += 1
             await asyncio.sleep(1)
 
     finally:
-        print("finished, exiting now")
-    # print("In send message!")
-    # await socketio.sleep(2.0)
-    # await sio.emit('feedback', "From thread!")
-## If we wanted to create a new websocket endpoint,
-## use this decorator, passing in the name of the
-## event we wish to listen out for
-@sio.on('message')
-async def print_message(sid, message):
-    print("Socket ID: " , sid)
-    print(message)
-    ## await a successful emit of our reversed message
-    ## back to the client
-    await sio.emit('message', message[::-1])
+        print("Background task exiting!")
 
-## We bind our aiohttp endpoint to our app
-## router
+# @sio.on('message')
+# async def print_message(sid, message):
+#     print("Socket ID: {}".format(sid))
+#     print(message)
+#     await sio.emit('message', message[::-1])
+
 app.router.add_get('/', index)
 app.router.add_get('/videostream', video_feed)
 
-## We kick off our server
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(description='Video classification training using image sequences')
+    parser.add_argument('--workers', default=4, help='number of workers')
+    parser.add_argument('--model', default='r2plus1d_18', help='model')
+    parser.add_argument('--device', default='cuda', help='device')
+    parser.add_argument('--clip-len', default=16, type=int, metavar='N',
+                        help='number of frames per clip')
+    parser.add_argument('--clips-per-video', default=5, type=int, metavar='N',
+                        help='maximum number of clips per video to consider')
+    parser.add_argument('-b', '--batch-size', default=8, type=int)
+    parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
+    parser.add_argument('--resume-dir', default='checkpoint.pth', help='path where the model checkpoint is saved')
+    parser.add_argument(
+        "--pretrained",
+        dest="pretrained",
+        help="Use pre-trained models from the modelzoo",
+        action="store_true",
+    )
+
+    args = parser.parse_args()
+
+    return args
+
 if __name__ == '__main__':
-    # t = threading.Thread(target=await send_message)
-    # t.daemon = True
-    # t.start()
+    args = parse_args()
+    print("Loading the model for prediction...")
+    device = torch.device(args.device)
+    # load the pretrained weights for the known model
+    model = torchvision.models.video.__dict__[args.model](pretrained=args.pretrained)
+    model.to(device)
+
+    if args.resume_dir:
+        if not os.path.exists(args.resume_dir):
+            raise OSError("Checkpoint file does not exist!")
+        else:
+            checkpoint_file = args.resume_dir
+            checkpoint = torch.load(checkpoint_file, map_location='cpu')
+            model.load_state_dict(checkpoint['model'])
+    print("Model loaded from checkpoint!")
+
     sio.start_background_task(target=lambda: send_message())
     web.run_app(app)
-
     cap.release()
