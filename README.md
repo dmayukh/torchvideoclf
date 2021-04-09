@@ -73,6 +73,7 @@ You should run the below in the above container
     Use the container as above 
     `docker pull mayukhd/jetson_4_1:cp36torch1.7`
     
+    The camera (USB camera) should be connected to the Jetson.
     
     Remember to run the container on Jetson with --device=/dev/video0 flag
     
