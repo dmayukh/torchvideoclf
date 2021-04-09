@@ -63,3 +63,30 @@ You should run the below in the above container
     `python3 download.py --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences>`
   
     `python3 test.py --test-dir=\<test image seq. dir> --resume-dir=\<full path to checkpoint file>`
+
+- Detect actions of interest on a Jetson and notify to a Webapp
+    
+    The jetson_livedetect has code to read live video from the camera connected to a Jetson and feed it to a web page.
+    The code uses sockets so that an async background task (possibly running predict on the video frames) could send a notification to the web app.
+    the web app could be launched on the phone that can talk to the Jetson
+    
+    Use the container as above 
+    `docker pull mayukhd/jetson_4_1:cp36torch1.7`
+    
+    The camera (USB camera) should be connected to the Jetson.
+    
+    Remember to run the container on Jetson with --device=/dev/video0 flag
+    
+    Install the requirements, they are all in the requirements file.
+    
+    Change the following in the index.html file to match your Jetsons IP 
+    `<img src="http://192.168.1.20:8080/videostream" width="30%">`
+    
+    navigate to the jetson_livedetect foldet and run python3 app.py
+    On your browser, hit the url
+    
+    Open debug view in your browser, you should see the console printing messages that it is receiving communication from the server via sockets in an async manner.
+    
+     
+    
+    
