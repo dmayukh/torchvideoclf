@@ -63,3 +63,11 @@ You should run the below in the above container
     `python3 download.py --val_video_list=<full path to the test list> --dataset_valdir=<full path to where the image sequences>`
   
     `python3 test.py --test-dir=\<test image seq. dir> --resume-dir=\<full path to checkpoint file>`
+
+- Detect actions of interest on a Jetson and notify to a Webapp
+    
+    The jetson_livedetect has code to read live video from the camera connected to a Jetson and feed it to a web page.
+    The code uses sockets so that an async background task (possibly running predict on the video frames) could send a notification to the web app.
+    the web app could be launched on the phone that can talk to the Jetson
+    
+    
