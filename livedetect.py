@@ -145,7 +145,10 @@ async def send_message():
                 frames = all_frames.get_as_dataset()
                 #print("shape {}".format(frames.shape))
                 m = prediction_model.get_model()
+                m.eval()
                 frames = frames[None, :]
+                #move to GPU
+                frames = frames.to(prediction_model.device, non_blocking=True)
                 output = m(frames)
                 #print("output shape {}".format(output.shape))
                 _, pred = output.topk(5, 1, True, True)
@@ -206,7 +209,6 @@ class Model():
                 checkpoint_file = args.resume_dir
                 checkpoint = torch.load(checkpoint_file, map_location='cpu')
                 self.model.load_state_dict(checkpoint['model'])
-
     def get_model(self):
         return self.model
 
