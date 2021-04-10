@@ -155,8 +155,7 @@ async def send_message():
                 # print("prediction probabilities = {}".format(p))
                 vals, preds = p.topk(5, 1, True, True)
                 msg = "Best class = {}, best prob = {}".format(preds[0][0], vals[0][0])
-                print(msg)
-            await sio.emit('feedback', msg)
+                await sio.emit('feedback', msg)
             await asyncio.sleep(0.3)
 
     finally:

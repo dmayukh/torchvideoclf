@@ -82,10 +82,12 @@ You should run the below in the above container
     Change the following in the index.html file to match your Jetsons IP 
     `<img src="http://192.168.1.20:8080/videostream" width="30%">`
     
-    navigate to the jetson_livedetect foldet and run python3 app.py
-    On your browser, hit the url
-    
-    Open debug view in your browser, you should see the console printing messages that it is receiving communication from the server via sockets in an async manner.
+    Run the livedetect.py app 
+    `python3 livedetect.py --resume-dir=checkpoint.pth`
+    and navigate to the `http://<jetson ip>:8080/` on your browser  
+    Open debug view in your browser, you should see the console printing 
+    essages that it is receiving communication from the server via sockets 
+    in an async manner.
     
      
     
