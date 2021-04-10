@@ -83,7 +83,7 @@ You should run the below in the above container
     `<img src="http://192.168.1.20:8080/videostream" width="30%">`
     
     Run the livedetect.py app 
-    `python3 livedetect.py --resume-dir=checkpoint.pth`
+    `python3 livedetect.py --device='cpu' --resume-dir=checkpoint.pth`
     and navigate to the `http://<jetson ip>:8080/` on your browser  
     Open debug view in your browser, you should see the console printing 
     essages that it is receiving communication from the server via sockets 
