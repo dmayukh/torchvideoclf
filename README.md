@@ -93,7 +93,7 @@ You should run the below in the above container
     
     `python3 livedetect.py --device='cpu' --resume-dir=checkpoint.pth --fromlocalvideo --saved-video=2021-04-10-155333.mp4`
     
-    NOte: the "Skip vided" option does not work when using live camera.
+    NOte: the "Skip video" option does not work when using live camera.
     
     
  
