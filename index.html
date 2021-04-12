@@ -33,10 +33,15 @@
     </div>
 </div>
   <body>
+    <button onClick="skipFrames()">Skip 5 seconds</button>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script>
       const text_label = document.getElementById("detection-result");
       const socket = io("http://" + document.domain + ":8080");
+
+      function skipFrames() {
+        socket.emit("skip", "10");
+      }
 
       function sendMsg() {
         socket.emit("message", "HELLO WORLD");

@@ -23,6 +23,7 @@ python-socketio 4.x should be used with javascript sockeIO 1.x and 2.x
 connection_flag = 0
 #global variable, the model that is used to make predictions
 prediction_model = None
+fps = None
 """
     The dataset of the frames from the carmera used for prediction
 """
@@ -80,12 +81,14 @@ sio = socketio.AsyncServer()
 app = web.Application()
 sio.attach(app)
 
-cap = cv2.VideoCapture(0)
+cap = None
+local_video_path = None
 
 def gen_frames():
     global all_frames
     while True:
         success, frame = cap.read()  # read a frame from the camera
+        #print("Current frame pos = {}".format(curr_frame_pos))
         all_frames.add_frame(frame)
         if not success:
             break
@@ -103,7 +106,7 @@ async def video_feed(request):
     await response.prepare(request)
 
     for frame in gen_frames():
-        await asyncio.sleep(0.1)
+        await asyncio.sleep(0.06)
         await response.write(frame)
     return response
 
@@ -125,7 +128,17 @@ def disconnect(sid):
     print('disconnect ', sid)
     connection_flag = 0
 
-
+@sio.on('skip')
+async def print_message(sid, message):
+    global cap
+    if local_video_path != None:
+        print("Socket ID: " , sid)
+        ## await a successful emit of our reversed message
+        ## back to the client
+        print("Skipping 10 frames...")
+        curr_frame_pos = cap.get(cv2.CAP_PROP_POS_FRAMES);
+        cap.set(cv2.CAP_PROP_POS_FRAMES, curr_frame_pos + 75)
+    #await sio.emit('message', message[::-1])
 
 async def send_message():
     global connection_flag
@@ -135,10 +148,10 @@ async def send_message():
         await asyncio.sleep(1)
         print("Wait till a client connects...")
         while connection_flag == 0:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             pass
-        print("Waiting 2 seconds..")
-        await asyncio.sleep(2)
+        #print("Waiting 2 seconds..")
+        #await asyncio.sleep(0.1)
         while True:
             #print("Now emitting: {}".format(i))
             if all_frames.num_frames() >= 16:
@@ -159,7 +172,7 @@ async def send_message():
                 vals, preds = p.topk(5, 1, True, True)
                 msg = "Best class = {}, best prob = {}".format(preds[0][0], vals[0][0])
                 await sio.emit('feedback', msg)
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.006)
 
     finally:
         print("Background task exiting!")
@@ -176,6 +189,7 @@ app.router.add_get('/videostream', video_feed)
 def parse_args():
     import argparse
     parser = argparse.ArgumentParser(description='Video classification training using image sequences')
+
     parser.add_argument('--workers', default=4, help='number of workers')
     parser.add_argument('--model', default='r2plus1d_18', help='model')
     parser.add_argument('--device', default='cuda', help='device')
@@ -186,10 +200,17 @@ def parse_args():
     parser.add_argument('-b', '--batch-size', default=8, type=int)
     parser.add_argument('--print-freq', default=10, type=int, help='print frequency')
     parser.add_argument('--resume-dir', default='checkpoint.pth', help='path where the model checkpoint is saved')
+    parser.add_argument('--saved-video', default='', help='a saved video to use for streaming inference')
     parser.add_argument(
         "--pretrained",
         dest="pretrained",
         help="Use pre-trained models from the modelzoo",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--fromlocalvideo",
+        dest="fromlocalvideo",
+        help="Use a saved video instead of the live camera",
         action="store_true",
     )
 
@@ -219,6 +240,16 @@ class Model():
 if __name__ == '__main__':
     #global prediction_model
     args = parse_args()
+    if not args.fromlocalvideo:
+        cap = cv2.VideoCapture(0)
+    else:
+        if os.path.exists(args.saved_video):
+            local_video_path = args.saved_video
+            cap = cv2.VideoCapture(args.saved_video)
+        else:
+            raise OSError("No saved video at {}".format(args.saved_video))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    print("FPS = {}".format(fps))
     print("Loading the model for prediction...")
     prediction_model = Model(args)
     # device = torch.device(args.device)
@@ -237,4 +268,5 @@ if __name__ == '__main__':
 
     sio.start_background_task(target=lambda: send_message())
     web.run_app(app)
-    cap.release()
+    if (not args.fromlocalvideo) & (cap == None):
+        cap.release()

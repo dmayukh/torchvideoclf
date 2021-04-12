@@ -89,6 +89,13 @@ You should run the below in the above container
     essages that it is receiving communication from the server via sockets 
     in an async manner.
     
+    Running the livedetect with a saved video 
+    
+    `python3 livedetect.py --device='cpu' --resume-dir=checkpoint.pth --fromlocalvideo --saved-video=2021-04-10-155333.mp4`
+    
+    NOte: the "Skip vided" option does not work when using live camera.
+    
+    
  
 
     
