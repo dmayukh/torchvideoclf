@@ -75,7 +75,9 @@ class UniformClipSampler(Sampler):
         idxs = []
         s = 0
         # select num_clips_per_video for each video, uniformly spaced
+        print("len video_frames.clips = {}".format(len(self.video_frames.clips)))
         for c in self.video_frames.clips:
+            print("c = {}".format(c))
             length = len(c)
             if length == 0:
                 # corner case where video decoding fails
@@ -88,6 +90,7 @@ class UniformClipSampler(Sampler):
             )
             s += length
             idxs.append(sampled)
+            print("sampled = {}".format(sampled))
         return iter(cast(List[int], torch.cat(idxs).tolist()))
 
     def __len__(self) -> int:

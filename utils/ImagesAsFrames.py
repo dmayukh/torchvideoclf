@@ -48,6 +48,7 @@ class ImagesAsFrames(object):
         for d in dl:
             clips, fps = list(zip(*d))
             clips = [torch.as_tensor(c, dtype=torch.long) for c in clips]
+            print("clips = {}".format(len(clips)))
             self.video_pts.extend(clips)
             self.video_fps.extend(fps)
 
@@ -75,6 +76,7 @@ class ImagesAsFrames(object):
         if idx >= self.num_clips():
             raise IndexError("Index {} out of range ({} number of clips)".format(idx, self.num_clips()))
         # get the clip location
+        print("cum sizes = {}".format(self.cumulative_sizes))
         video_idx = bisect.bisect_right(self.cumulative_sizes, idx)
         if video_idx == 0:
             frame_idx = idx
@@ -82,6 +84,7 @@ class ImagesAsFrames(object):
             frame_idx = idx - self.cumulative_sizes[video_idx - 1]
         video_path = self.annotations[video_idx]
         frame_idxs = self.clips[video_idx][frame_idx]
+        print("frame idxs = {}".format(frame_idxs))
         # all these frames are basically images in the folder video_path, load them here
         # how many frames are there in the video, simply check the number of images in the path
         if len(frame_idxs) <= 0:
@@ -89,6 +92,7 @@ class ImagesAsFrames(object):
         num_frames = len(frame_idxs)
         image_name = video_path['path'] + "/" + "img_{}.jpg".format(frame_idxs[-1])
         frame = cv2.imread(image_name)
+        print("Loading image {}".format(image_name))
         height, width, channels = frame.shape
         # initialize tensor
         frames = torch.FloatTensor(num_frames, height, width, channels)

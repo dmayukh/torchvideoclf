@@ -22,15 +22,21 @@ def makedir(path):
 def collate_fn(batch):
     return default_collate(batch)
 
+import time
 def evaluate(model, criterion, data_loader, device):
     model.eval()
     metric_logger = MetricLogger(delimiter="  ")
     header = 'Test:'
     with torch.no_grad():
         for video, target in metric_logger.log_every(data_loader, 100, header):
+            start_time = time.time()
             video = video.to(device, non_blocking=True)
             target = target.to(device, non_blocking=True)
             output = model(video)
+            time_diff = time.time() - start_time
+            print("Predicting on a video of shape {} took {} seconds".format(video.shape, time_diff))
+            print("target shape {}".format(target.shape))
+            print("target {}".format(target))
             loss = criterion(output, target)
 
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
@@ -51,13 +57,18 @@ def main(args):
 
     transform_eval = VideoClassificationPresetEval((128, 171), (112, 112))
     dataset_test = VideoDatasetCustom(args.test_dir, "annotations.txt", transform=transform_eval)
-
-    test_sampler = UniformClipSampler(dataset_test.clips, args.clips_per_video)
+    #dataset_test is a torch.Size([3, 16, 112, 112])
+    #len(dataset_test.clips) = 229
+    print("dataset_test.clips = {}".format(len(dataset_test.clips)))
+    # test_sampler = UniformClipSampler(dataset_test.clips, args.clips_per_video)
+    #len(test_sampler.video_frames.clips) = 19, there are 19 videos in the dataset/valid folder
 
     data_loader_test = torch.utils.data.DataLoader(
-        dataset_test, batch_size=args.batch_size,
-        sampler=test_sampler, num_workers=args.workers,
+        dataset_test, batch_size=args.batch_size, num_workers=args.workers,
         pin_memory=True, collate_fn=collate_fn)
+    #from 19 videos, if we uniformly sample 5 frames each, there will be 95 frame indices to choose from
+    #since batch size is 8, we will have 95/8 = 12 batches
+    # video, target in each data_loader_test, video.shape = torch.Size([8, 3, 16, 112, 112])
 
     #load the pretrained weights for the known model
     model = torchvision.models.video.__dict__[args.model](pretrained=args.pretrained)
