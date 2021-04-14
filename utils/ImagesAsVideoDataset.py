@@ -27,5 +27,4 @@ class ImagesAsVideoDataset(object):
         frame_cnt = int(annot['end'])
         fps = int(annot['fps'])
         video_frame_idxs = list(np.arange(frame_cnt))
-        print("video frame idx = {}".format(len(video_frame_idxs)))
         return video_frame_idxs, fps

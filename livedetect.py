@@ -110,37 +110,33 @@ class FrameDataset():
         transform_eval = VideoClassificationPresetEval((128, 171), (112, 112))
         # all frames buffered until this point
         frames = self.get_frames()
-        print("Total accumulated frames = {}".format(len(frames)))
         idxs = np.arange(len(frames))
         idxs = torch.Tensor(idxs)
         idxs = idxs.type(torch.LongTensor)
         # create clips with sequence of frames, each clip is 16 frames, mutiple clips spanning entire bufferred video
         clips_idxs = unfold(idxs, 16, 1)
         clips_idxs = clips_idxs.type(torch.uint8)
-        print("Fetched {} frames into {} clips".format(len(frames), len(clips_idxs)))
-        print("clips_idxs = {}".format(clips_idxs))
         frames_batches = []
         for clip_idx in clips_idxs:
             frames_batches.append([frames[i] for i in clip_idx.type(torch.uint8).numpy()])
-        print("frames_batches count = {}".format(len(frames_batches)))
         height, width, channels = frames[0].shape
-        #batchtensor = torch.FloatTensor(len(clips_idxs), None, None, None, None)
+        #need to parallelize this routine, this one takes about 1.2 seconds for 8 batches of 16 frames each
         batches = []
         for batch_idx in range(len(frames_batches)):
             imageseq = frames_batches[batch_idx]  # a seq of 16 images / frames in this batch
-            print("Frame count in clip = {}".format(len(imageseq)))
             framestensor = torch.FloatTensor(16, height, width, channels)
+            start_time = time.time()
             for idx in range(len(imageseq)):
                 frame = imageseq[idx]
                 frame = torch.from_numpy(frame)
                 framestensor[idx, :, :, :] = frame.type(torch.uint8)
             batches.append(transform_eval(framestensor.type(torch.uint8)))
+            print("Took {} seconds to for idx in range(len(imageseq))".format(time.time() - start_time))
         #convert batches to tensor and ship
         c, b, h, w = batches[0].shape
         batchtensor = torch.FloatTensor(len(clips_idxs), c, b, h, w)
         for i in range(len(batches)):
             batchtensor[i, :, :, :, :] = batches[i]
-        print("batchtensor shape = {}",format(batchtensor.shape))
         return batchtensor
 
     def get_as_dataset(self, min_frames=16):
@@ -149,7 +145,6 @@ class FrameDataset():
         height, width, channels = frames[0].shape
         framestensor = torch.FloatTensor(min_frames, height, width, channels)
         # frame = cv2.imread(image_name)
-        print("Frame count = {}".format(len(frames)))
         for idx in range(min_frames - 1):
             frame = cv2.cvtColor(frames[idx], cv2.COLOR_BGR2RGB)
             # frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -244,6 +239,7 @@ async def send_message():
     global all_frames
     global curr_frame_pos
     try:
+
         print("Background task started...")
         await asyncio.sleep(1)
         print("Wait till a client connects...")
@@ -251,27 +247,18 @@ async def send_message():
             await asyncio.sleep(0.1)
             pass
         while True:
+            start_time_routine = time.time()
             criterion = nn.CrossEntropyLoss()
             if all_frames.num_frames() >= 16:
+                start_time_subroutine = time.time()
+                start_time = time.time()
                 batches = all_frames.get_dataset_batches()
-                #img_path, annotfile_path = all_frames.get_live_frames_as_images()
-                #print("Saved images to {} and {}".format(img_path, annotfile_path))
-                #transform_eval = VideoClassificationPresetEval((128, 171), (112, 112))
-                #dataset_test = VideoDatasetCustom("temp", "annotations.txt", transform=transform_eval)
-                #print("dataset clips length = ", len(dataset_test.clips))
-                # data_loader_test = torch.utils.data.DataLoader(
-                #     dataset_test, batch_size=8,
-                #     num_workers=args.workers,
-                #     pin_memory=True, collate_fn=collate_fn)
+                print("Took {} seconds to get_dataset_batches()".format(time.time() - start_time))
                 with torch.no_grad():
-                    # for video, target in data_loader_test:
-                    #     break;
-                    #batches = all_frames.get_dataset_batches()
                     m = prediction_model.get_model()
                     m.eval()
                     #move to GPU
                     start_time = time.time()
-                    # batches = batches.to(prediction_model.device, non_blocking=True)
                     print("Shape of video = {}".format(batches.shape))
                     batches = batches.to(prediction_model.device, non_blocking=True)
                     target = torch.Tensor(np.ones(len(batches)))
@@ -280,9 +267,11 @@ async def send_message():
                     output = m(batches)
                     time_diff = time.time() - start_time
                     print("predicted an input of shape {} in {} seconds".format(batches.shape, time_diff))
+                    start_time = time.time()
                     loss = criterion(output, target)
                     _, pred = output.topk(5, 1, True, True)
-                    print("pred = {}".format(pred))
+                    print("Took {} seconds to predictions".format(time.time() - start_time))
+                    #print("pred = {}".format(pred))
 
                 # t = torch.Tensor(np.ones(len(batches)))
                 # t = t.type(torch.long)
@@ -294,7 +283,9 @@ async def send_message():
                 # msg = "Best class = {}, best prob = {}, frame_idx={}".format(preds[0][0], vals[0][0], curr_frame_pos)
                 msg = "Best class = {}, best prob = {}, frame_idx={}".format(1, 0.01, 10)
                 await sio.emit('feedback', msg)
+                print("Took {} seconds to subroutine send_message()".format(time.time() - start_time_subroutine))
             await asyncio.sleep(0.6)
+            print("Took {} seconds to send_message()".format(time.time() - start_time_routine))
 
     finally:
         print("Background task exiting!")

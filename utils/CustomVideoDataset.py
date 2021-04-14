@@ -75,9 +75,7 @@ class UniformClipSampler(Sampler):
         idxs = []
         s = 0
         # select num_clips_per_video for each video, uniformly spaced
-        print("len video_frames.clips = {}".format(len(self.video_frames.clips)))
         for c in self.video_frames.clips:
-            print("c = {}".format(c))
             length = len(c)
             if length == 0:
                 # corner case where video decoding fails
@@ -90,7 +88,6 @@ class UniformClipSampler(Sampler):
             )
             s += length
             idxs.append(sampled)
-            print("sampled = {}".format(sampled))
         return iter(cast(List[int], torch.cat(idxs).tolist()))
 
     def __len__(self) -> int:
@@ -155,11 +152,6 @@ class VideoDatasetCustom(Dataset):
             j = f.read()
             rawjson = json.loads(j)
         for rec in rawjson:
-            #change to json read
-            #data = l.strip().split(' ')
-            # if len(data) == 5:  # we have all information
-            #     annot = {'path': dataset_path + "/" + data[0], 'frame_start': data[1], 'frame_end': data[2],
-            #              'class': data[3], 'fps': data[4]}
             rec['path'] = dataset_path + "/" + rec['path']
             annotations.append(rec)
         return annotations
