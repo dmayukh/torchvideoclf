@@ -6,11 +6,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>Document</title>
+    <style>
+    .slidecontainer {
+            width: 100%;
+        }
+        .slider {
+          -webkit-appearance: none;
+          width: 100%;
+          height: 25px;
+          background: #d3d3d3;
+          outline: none;
+          opacity: 0.7;
+          -webkit-transition: .2s;
+          transition: opacity .2s;
+        }
+
+        .slider:hover {
+          opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 25px;
+          height: 25px;
+          background: #4CAF50;
+          cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+          width: 25px;
+          height: 25px;
+          background: #4CAF50;
+          cursor: pointer;
+        }
+  </style>
   </head>
   <div class="row">
-        <div class="col-lg-8  offset-lg-2">
+        <div class="col-lg-8  offset-lg-2" style="width:30%">
             <h3 class="mt-5">Jetson CAM</h3>
-            <img src="http://localhost:8080/videostream" width="30%">
+            <img src="http://localhost:8080/videostream">
+            <input type="range" min="1" max="100" value="50" class="slider" id="myRange">
         </div>
     </div>
     <div class="container" min-width= "1024px" width="100%">
@@ -22,12 +58,13 @@
           <h5 class="card-title"></h5>
           <div class="card-scroller">
             <p id="detection-result"></p>
+            <p id="detection-probability"></p>
           </div>
         </div>
       </div>
-
       <div style="width: 70%">
         <img id="streamer-image" src="">
+
       </div>
 
     </div>
@@ -37,6 +74,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js"></script>
     <script>
       const text_label = document.getElementById("detection-result");
+      const text_prob = document.getElementById("detection-probability");
+      const slider = document.getElementById("myRange");
+
       const socket = io("http://" + document.domain + ":8080");
 
       function skipFrames() {
@@ -47,12 +87,30 @@
         socket.emit("message", "HELLO WORLD");
       }
 
+      socket.on('feed', function(data) {
+          data = JSON.parse(data);
+          slider.value = data.position;
+          slider.max = data.frame_count;
+      });
       socket.on("message", function(data) {
           console.log(data);
       });
 
       socket.on("feedback", function(data) {
-          text_label.innerHTML = data;
+          data = JSON.parse(data);
+          var cat;
+          if (data.category == 2) {
+            cat = 'safe'
+            }
+            else if (data.category == 1) {
+            cat = 'cyclist'
+            }
+            else {
+            cat = 'pedestrian'
+            }
+
+          text_label.innerHTML = cat;
+          text_prob.innerHTML = data.probability;
           console.log(data);
       });
     </script>

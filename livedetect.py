@@ -16,6 +16,7 @@ import time
 import errno
 import math
 import shutil
+from joblib import Parallel, delayed
 
 
 """
@@ -105,33 +106,49 @@ class FrameDataset():
             f.write(']')
         return image_temp_path, annotationsfilepath
 
-    def get_dataset_batches(self, min_frames=16):
-        batches = []
-        transform_eval = VideoClassificationPresetEval((128, 171), (112, 112))
-        # all frames buffered until this point
-        frames = self.get_frames()
-        idxs = np.arange(len(frames))
-        idxs = torch.Tensor(idxs)
-        idxs = idxs.type(torch.LongTensor)
-        # create clips with sequence of frames, each clip is 16 frames, mutiple clips spanning entire bufferred video
-        clips_idxs = unfold(idxs, 16, 1)
-        clips_idxs = clips_idxs.type(torch.uint8)
-        frames_batches = []
-        for clip_idx in clips_idxs:
-            frames_batches.append([frames[i] for i in clip_idx.type(torch.uint8).numpy()])
-        height, width, channels = frames[0].shape
-        #need to parallelize this routine, this one takes about 1.2 seconds for 8 batches of 16 frames each
+    def process_frames(self, frames_batches, height, width, channels, transform_eval):
         batches = []
         for batch_idx in range(len(frames_batches)):
             imageseq = frames_batches[batch_idx]  # a seq of 16 images / frames in this batch
             framestensor = torch.FloatTensor(16, height, width, channels)
-            start_time = time.time()
+            #start_time = time.time()
             for idx in range(len(imageseq)):
                 frame = imageseq[idx]
                 frame = torch.from_numpy(frame)
                 framestensor[idx, :, :, :] = frame.type(torch.uint8)
             batches.append(transform_eval(framestensor.type(torch.uint8)))
-            print("Took {} seconds to for idx in range(len(imageseq))".format(time.time() - start_time))
+        return batches
+
+    def get_dataset_batches(self, min_frames=16):
+        batches = []
+        transform_eval = VideoClassificationPresetEval((128, 171), (112, 112))
+        # all frames buffered until this point
+        frames = self.get_frames()
+        print("Accumulated {} frames".format(len(frames)))
+        idxs = np.arange(len(frames))
+        idxs = torch.Tensor(idxs)
+        idxs = idxs.type(torch.LongTensor)
+        #print("Original idxs = {}".format(idxs))
+        #resample the frames, use a reduced frame rate to that we can cover a longer duration of clip
+        desired_frame_rate = int(self.fps/2)
+        total_frames = len(idxs) * (float(desired_frame_rate) / self.fps)
+        ids = sample_frames_from_video(int(math.floor(total_frames)), self.fps, desired_frame_rate)
+        idxs = idxs[ids]
+        #print("New idxs = {}".format(idxs))
+        # create clips with sequence of frames, each clip is 16 frames, multiple clips spanning entire buffered video
+        clips_idxs = unfold(idxs, 16, 1)
+        #print("clips_idxs = {}".format(clips_idxs))
+        clips_idxs = clips_idxs.type(torch.uint8)
+        frames_batches = []
+        for clip_idx in clips_idxs:
+            frames_batches.append([frames[i] for i in clip_idx.type(torch.uint8).numpy()])
+        height, width, channels = frames[0].shape
+        # results = Parallel(n_jobs=2)(delayed(self.process_frames)(frames_batches[i], height, width, channels, transform_eval) for i in range(len(frames_batches)))
+        # print("Parallel processing complete, moving on...")
+        # batches = results[0]
+        #print("batches = {}".format(batches[0]))
+        batches = self.process_frames(frames_batches, height, width, channels, transform_eval)
+
         #convert batches to tensor and ship
         c, b, h, w = batches[0].shape
         batchtensor = torch.FloatTensor(len(clips_idxs), c, b, h, w)
@@ -170,7 +187,7 @@ def gen_frames():
         success, frame = cap.read()  # read a frame from the camera
         #print("Current frame pos = {}".format(curr_frame_pos))
         curr_frame_pos = cap.get(cv2.CAP_PROP_POS_FRAMES)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        #frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         # ret, buffer = cv2.imencode('.jpg', frame)
         # buffer = cv2.imdecode(buffer, cv2.IMREAD_UNCHANGED)
         all_frames.add_frame(frame)
@@ -249,7 +266,7 @@ async def send_message():
         while True:
             start_time_routine = time.time()
             criterion = nn.CrossEntropyLoss()
-            if all_frames.num_frames() >= 16:
+            if all_frames.num_frames() >= 44:
                 start_time_subroutine = time.time()
                 start_time = time.time()
                 batches = all_frames.get_dataset_batches()
@@ -259,42 +276,33 @@ async def send_message():
                     m.eval()
                     #move to GPU
                     start_time = time.time()
-                    print("Shape of video = {}".format(batches.shape))
+                    #print("Shape of video = {}".format(batches.shape))
                     batches = batches.to(prediction_model.device, non_blocking=True)
                     target = torch.Tensor(np.ones(len(batches)))
                     target = target.type(torch.long)
                     target = target.to(prediction_model.device, non_blocking=True)
                     output = m(batches)
                     time_diff = time.time() - start_time
-                    print("predicted an input of shape {} in {} seconds".format(batches.shape, time_diff))
+                    #print("predicted an input of shape {} in {} seconds".format(batches.shape, time_diff))
                     start_time = time.time()
                     loss = criterion(output, target)
-                    _, pred = output.topk(5, 1, True, True)
-                    print("Took {} seconds to predictions".format(time.time() - start_time))
-                    #print("pred = {}".format(pred))
-
-                # t = torch.Tensor(np.ones(len(batches)))
-                # t = t.type(torch.long)
-                # t = t.to(prediction_model.device, non_blocking=True)
-                # loss = criterion(output, t)
-                # _, pred = output.topk(5, 1, True, True)
-                # p = torch.nn.functional.softmax(output, dim=1)
-                # vals, preds = p.topk(5, 1, True, True)
-                # msg = "Best class = {}, best prob = {}, frame_idx={}".format(preds[0][0], vals[0][0], curr_frame_pos)
-                msg = "Best class = {}, best prob = {}, frame_idx={}".format(1, 0.01, 10)
-                await sio.emit('feedback', msg)
+                    p = torch.nn.functional.softmax(output, dim=1)
+                    probs, preds = p.topk(5, 1, True, True)
+                    c = preds[:, :1].squeeze()
+                    category = torch.mode(c).values.item()
+                    c_idx = torch.where(c == category)[0]
+                    pr = probs[c_idx][:, :1].squeeze()
+                    probability = torch.mean(pr).item()
+                    #print("Took {} seconds to predictions".format(time.time() - start_time))
+                msgJson = "\'{\"category\":" + str(category) + ",\"probability\":" + str(probability) + "}'"
+                # msg = "Best class = {}, best prob = {}".format(category, probability)
+                await sio.emit('feedback', eval(msgJson))
                 print("Took {} seconds to subroutine send_message()".format(time.time() - start_time_subroutine))
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(2.0)
             print("Took {} seconds to send_message()".format(time.time() - start_time_routine))
 
     finally:
         print("Background task exiting!")
-
-# @sio.on('message')
-# async def print_message(sid, message):
-#     print("Socket ID: {}".format(sid))
-#     print(message)
-#     await sio.emit('message', message[::-1])
 
 app.router.add_get('/', index)
 app.router.add_get('/videostream', video_feed)
@@ -347,9 +355,6 @@ class Model():
         return self.model
 
 
-
-
-
 if __name__ == '__main__':
     #global prediction_model
     args = parse_args()
@@ -366,20 +371,8 @@ if __name__ == '__main__':
     print("FPS = {}".format(fps))
     print("Loading the model for prediction...")
     prediction_model = Model(args)
-    all_frames = FrameDataset(max_frames=22, fps = math.floor(fps))
-    # device = torch.device(args.device)
-    # # load the pretrained weights for the known model
-    # model = torchvision.models.video.__dict__[args.model](pretrained=args.pretrained)
-    # model.to(device)
-
-    # if args.resume_dir:
-    #     if not os.path.exists(args.resume_dir):
-    #         raise OSError("Checkpoint file does not exist!")
-    #     else:
-    #         checkpoint_file = args.resume_dir
-    #         checkpoint = torch.load(checkpoint_file, map_location='cpu')
-    #         model.load_state_dict(checkpoint['model'])
-    # print("Model loaded from checkpoint!")
+    # use half the fps, we need not use all frames in tha video, every other frame is good enough
+    all_frames = FrameDataset(max_frames=44, fps = math.floor(fps))
 
     sio.start_background_task(target=lambda: send_message())
     web.run_app(app)
