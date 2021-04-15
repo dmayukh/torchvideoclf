@@ -74,6 +74,9 @@ def get_clip_sequences_from_video(video_frame_ids, num_frames_in_clip, frames_be
     idxs = sample_frames_from_video(int(math.floor(total_frames)), fps, desired_frame_rate)
     resampled_video_frame_ids = video_frame_ids[idxs]
     clips = unfold(resampled_video_frame_ids, num_frames_in_clip, frames_between_clips)
+    #if there are 31 frames in the clip, then are the rate of 16 frames per clip, we will return 31-16+1 = 16 clips with 16 frames each, sliding by one frame at a time over
+    #the 31 frames, while if there are 16 clips in the video, we will return only 1 clip with 16 frames,
+    # so larger videos are better, e.g. if we have 15 fps, for a one second clip we will get only one clip with 16 frames from this function
     if isinstance(idxs, slice):  # i.e. the quotient was an integer
         idxs = [idxs] * len(clips)
     else:

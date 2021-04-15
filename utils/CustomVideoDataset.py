@@ -152,11 +152,6 @@ class VideoDatasetCustom(Dataset):
             j = f.read()
             rawjson = json.loads(j)
         for rec in rawjson:
-            #change to json read
-            #data = l.strip().split(' ')
-            # if len(data) == 5:  # we have all information
-            #     annot = {'path': dataset_path + "/" + data[0], 'frame_start': data[1], 'frame_end': data[2],
-            #              'class': data[3], 'fps': data[4]}
             rec['path'] = dataset_path + "/" + rec['path']
             annotations.append(rec)
         return annotations
